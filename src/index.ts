@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuid } from 'uuid';
 
@@ -82,6 +82,36 @@ export class S3UploadService {
    */
   getPublicUrl(key: string): string {
     return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
+  }
+}
+
+  /**
+   * Check if a file exists and get its metadata
+   */
+  async getFileMetadata(key: string): Promise<{ contentType?: string; size?: number; lastModified?: Date } | null> {
+    try {
+      const command = new HeadObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      });
+
+      const response = await this.client.send(command);
+      return {
+        contentType: response.ContentType,
+        size: response.ContentLength,
+        lastModified: response.LastModified,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Validate file type against allowed types
+   */
+  validateFileType(fileName: string, allowedTypes: string[]): boolean {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    return ext ? allowedTypes.includes(ext) : false;
   }
 }
 
